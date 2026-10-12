@@ -51,6 +51,7 @@ abstract class TestCase extends Orchestra
     protected function defineDatabaseMigrations(): void
     {
         (include __DIR__ . '/../database/migrations/create_vibefilter_tables.php.stub')->up();
+        (include __DIR__ . '/../database/migrations/add_last_used_at_to_vibefilter_questions.php.stub')->up();
 
         Schema::create('reviews', function (Blueprint $table) {
             $table->id();

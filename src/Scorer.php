@@ -4,6 +4,7 @@ namespace Vibefilter\Filament;
 
 use Closure;
 use Illuminate\Support\Facades\Date;
+use Illuminate\Support\Facades\Schema;
 use Vibefilter\Filament\Contracts\CountsRequests;
 use Vibefilter\Filament\Contracts\DecisionDriver;
 use Vibefilter\Filament\Contracts\ReportsCost;
@@ -22,6 +23,9 @@ class Scorer
     /** What the last score() call did. */
     public ?ScoringReport $lastReport = null;
 
+    /** Whether the questions table has the last_used_at column yet. */
+    protected ?bool $tracksUse = null;
+
     public function __construct(protected DecisionDriver $driver) {}
 
     /**
@@ -34,6 +38,7 @@ class Scorer
         $started = microtime(true);
         $this->lastReport = null;
         $question = $this->question($statement);
+        $this->markUsed($question);
 
         $normalized = array_map(fn (?string $text) => TextNormalizer::text((string) $text), $texts);
         $hashes = array_map(TextNormalizer::hash(...), $normalized);
@@ -123,6 +128,19 @@ class Scorer
             ['hash' => TextNormalizer::hash($normalized)],
             ['text' => TextNormalizer::text($statement)],
         );
+    }
+
+    /**
+     * Records that the statement ran, for `vibefilter:prune`. Apps that haven't run
+     * the migration adding the column yet keep working, just without the record.
+     */
+    protected function markUsed(Question $question): void
+    {
+        $this->tracksUse ??= Schema::hasColumn($question->getTable(), 'last_used_at');
+
+        if ($this->tracksUse) {
+            Question::query()->whereKey($question->getKey())->update(['last_used_at' => Date::now()]);
+        }
     }
 
     /**

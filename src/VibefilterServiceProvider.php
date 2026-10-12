@@ -8,6 +8,7 @@ use Illuminate\Support\HtmlString;
 use Livewire\Livewire;
 use Spatie\LaravelPackageTools\Package;
 use Spatie\LaravelPackageTools\PackageServiceProvider;
+use Vibefilter\Filament\Commands\PruneCommand;
 use Vibefilter\Filament\Contracts\DecisionDriver;
 use Vibefilter\Filament\Livewire\PrescoreVibeFilters;
 
@@ -22,7 +23,8 @@ class VibefilterServiceProvider extends PackageServiceProvider
             ->hasConfigFile()
             ->hasViews()
             ->hasTranslations()
-            ->hasMigration('create_vibefilter_tables');
+            ->hasMigrations(['create_vibefilter_tables', 'add_last_used_at_to_vibefilter_questions'])
+            ->hasCommand(PruneCommand::class);
     }
 
     public function packageBooted(): void
