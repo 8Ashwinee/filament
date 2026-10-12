@@ -157,13 +157,11 @@ Only rows *without* a cached score count toward the limit. A statement that has 
 
 ### Live progress
 
-While a run is going, a progress bar under the table toolbar shows the requests as they come back, and any retries. When it's done, a notification sums up the run: how many rows matched, how many were scored and in how many requests, how many came from the cache, and how long it took. With the OpenRouter driver, the bar and the summary also show what the run cost, as OpenRouter reports it for each request.
+While a run is going, a progress bar under the table toolbar shows the requests as they come back. When it's done, a notification sums it up: rows matched, rows scored, time, and with OpenRouter, the cost.
 
 ![The progress bar during a run](https://raw.githubusercontent.com/vibefilter/filament/main/art/progress.png)
 
-During the run the table still shows the unfiltered rows; the matches replace them when the last request is back.
-
-The bar is streamed with Livewire's streaming responses. If your app sits behind Nginx, Livewire already sends the `X-Accel-Buffering: no` header that turns buffering off for these responses. If another proxy buffers them, the filter still works, but the bar only shows up at the end.
+The bar uses Livewire's streaming. Behind a proxy that buffers responses it only shows up at the end; the filter works either way.
 
 ### When the API has a bad moment
 
