@@ -13,6 +13,13 @@ return [
         'statement' => 'Azok a sorok, ahol…',
         'placeholder' => 'Az ügyfél dühös',
         'indicator' => 'Vibe: :statement',
+        'indicator_threshold' => 'Vibe: :statement (≥ :threshold)',
+    ],
+
+    'tuner' => [
+        'label' => 'Küszöb',
+        'help' => 'Ennyi sor marad az egyes küszöböknél. Válassz egyet, hogy lásd őket.',
+        'option' => ':threshold · :count',
     ],
 
     'column' => [

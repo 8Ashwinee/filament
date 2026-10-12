@@ -5,6 +5,7 @@ namespace Vibefilter\Filament\Tables\Filters;
 use Closure;
 use Filament\Actions\Action;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\ToggleButtons;
 use Filament\Notifications\Notification;
 use Filament\Tables\Filters\BaseFilter;
 use Filament\Tables\Filters\Indicator;
@@ -38,6 +39,9 @@ class VibeFilter extends BaseFilter
 
     protected int | Closure | null $maxUnscoredRows = null;
 
+    /** @var array<float>|bool|Closure Threshold steps offered in the filter panel, or false for none. */
+    protected array | bool | Closure $thresholdTuner = false;
+
     /** @var array<string, array<array-key>|null> Passing keys per statement, so one request scores only once. */
     protected array $resolved = [];
 
@@ -69,6 +73,17 @@ class VibeFilter extends BaseFilter
                 ->extraInputAttributes(fn (): array => $this->getTable()->hasDeferredFilters()
                     ? ['x-on:keydown.enter.prevent' => "if (typeof close === 'function') close(); \$wire.applyTableFilters()"]
                     : []),
+            // Off unless ->thresholdTuner(): how many rows each threshold keeps, from the
+            // scores the filter already has. Picking one re-filters at once, with no API call.
+            ToggleButtons::make('threshold')
+                ->label(__('vibefilter::vibefilter.tuner.label'))
+                ->helperText(__('vibefilter::vibefilter.tuner.help'))
+                ->options(fn (): array => $this->getTunerOptions())
+                ->inline()
+                ->grouped()
+                ->live()
+                ->afterStateUpdated(fn (mixed $state) => $this->applyTunedThreshold($state))
+                ->visible(fn (): bool => $this->hasThresholdTuner() && filled($this->getState()['statement'] ?? null)),
         ]);
 
         $this->query(fn (Builder $query, array $data) => $this->applyStatement(
@@ -77,9 +92,17 @@ class VibeFilter extends BaseFilter
             $data['run_anyway'] ?? null,
         ));
 
-        $this->indicateUsing(fn (array $data): array => filled($data['statement'] ?? null)
-            ? [Indicator::make(__('vibefilter::vibefilter.filter.indicator', ['statement' => $data['statement']]))]
-            : []);
+        $this->indicateUsing(function (array $data): array {
+            if (blank($data['statement'] ?? null)) {
+                return [];
+            }
+
+            $threshold = $this->getActiveThreshold();
+
+            return [Indicator::make($threshold === $this->getThreshold()
+                ? __('vibefilter::vibefilter.filter.indicator', ['statement' => $data['statement']])
+                : __('vibefilter::vibefilter.filter.indicator_threshold', ['statement' => $data['statement'], 'threshold' => Numbers::format($threshold, 2)]))];
+        });
 
         $this->excludeWhenResolvingRecord();
     }
@@ -115,6 +138,112 @@ class VibeFilter extends BaseFilter
         $this->maxUnscoredRows = $max;
 
         return $this;
+    }
+
+    /**
+     * Offers a few thresholds in the filter panel, each with how many rows it keeps.
+     * Meant for developers tuning a table; leave it off where users wouldn't know what a threshold is.
+     *
+     * @param  array<float>|bool|Closure  $steps  The thresholds to offer, or true for 0.6, 0.7, 0.8 and 0.9.
+     */
+    public function thresholdTuner(array | bool | Closure $steps = true): static
+    {
+        $this->thresholdTuner = $steps;
+
+        return $this;
+    }
+
+    public function hasThresholdTuner(): bool
+    {
+        return $this->evaluate($this->thresholdTuner) !== false;
+    }
+
+    /**
+     * @return array<float>
+     */
+    public function getThresholdSteps(): array
+    {
+        $steps = $this->evaluate($this->thresholdTuner);
+
+        if ($steps === false) {
+            return [];
+        }
+
+        $steps = is_array($steps) ? $steps : [0.6, 0.7, 0.8, 0.9];
+        $steps[] = $this->getThreshold();
+        $steps = array_values(array_unique(array_map(fn ($step) => round((float) $step, 2), $steps)));
+        sort($steps);
+
+        return $steps;
+    }
+
+    /**
+     * The threshold in use: the one picked in the tuner, if it's one of its steps, otherwise the configured one.
+     */
+    public function getActiveThreshold(): float
+    {
+        $picked = $this->getState()['threshold'] ?? null;
+
+        if (is_numeric($picked) && in_array(round((float) $picked, 2), $this->getThresholdSteps(), true)) {
+            return round((float) $picked, 2);
+        }
+
+        return $this->getThreshold();
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    protected function getTunerOptions(): array
+    {
+        $scores = $this->collectingCandidates ? null : $this->resolveActiveScores();
+        $options = [];
+
+        foreach ($this->getThresholdSteps() as $step) {
+            $label = Numbers::format($step, 2);
+
+            if ($scores !== null) {
+                $count = count(array_filter($scores, fn (float $probability) => $probability >= $step));
+                $label = __('vibefilter::vibefilter.tuner.option', ['threshold' => $label, 'count' => Numbers::format($count)]);
+            }
+
+            $options[number_format($step, 2, '.', '')] = $label;
+        }
+
+        return $options;
+    }
+
+    /**
+     * The tuner applies a pick at once, even with deferred filters: the scores are
+     * already there, so there is nothing to wait for and nothing to pay for.
+     */
+    protected function applyTunedThreshold(mixed $state): void
+    {
+        $livewire = $this->component();
+        $livewire->fill(['tableFilters.' . $this->getName() . '.threshold' => $state]);
+
+        // Fewer or more rows: back to the first page, like any other filter change.
+        if (method_exists($livewire, 'resetPage')) {
+            $livewire->resetPage();
+        }
+    }
+
+    /**
+     * The scores for the applied statement, running it if the table hasn't yet in this request.
+     *
+     * @return array<array-key, float>|null
+     */
+    protected function resolveActiveScores(): ?array
+    {
+        $state = $this->getState();
+
+        if (blank($state['statement'] ?? null)) {
+            return null;
+        }
+
+        $this->resolve($state['statement'], $state['run_anyway'] ?? null);
+
+        return $this->getActiveScores();
     }
 
     /**
@@ -188,16 +317,17 @@ class VibeFilter extends BaseFilter
         }
 
         $statement = trim($statement);
+        $key = $statement . "\0" . $this->getActiveThreshold();
 
-        if (! array_key_exists($statement, $this->resolved)) {
-            $this->resolved[$statement] = $this->passingKeys(
+        if (! array_key_exists($key, $this->resolved)) {
+            $this->resolved[$key] = $this->passingKeys(
                 $this->candidateQuery(),
                 $statement,
                 force: hash_equals($this->confirmationToken($statement), (string) $runAnyway),
             );
         }
 
-        return $this->resolved[$statement];
+        return $this->resolved[$key];
     }
 
     /**
@@ -262,7 +392,7 @@ class VibeFilter extends BaseFilter
 
         $this->scores[$statement] = $scores;
 
-        $threshold = $this->getThreshold();
+        $threshold = $this->getActiveThreshold();
         $passing = array_keys(array_filter($scores, fn (float $probability) => $probability >= $threshold));
 
         if (isset($exception)) {
