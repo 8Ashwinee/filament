@@ -43,7 +43,7 @@ Earlier Filament 5 releases will probably work too, but the test suite can't run
 composer require vibefilter/filament
 ```
 
-Publish and run the migration (it creates two tables for the score cache):
+Publish and run the migrations (they create two tables for the score cache):
 
 ```bash
 php artisan vendor:publish --tag="vibefilter-migrations"
@@ -137,6 +137,16 @@ $table->filtersApplyAction(
 
 The threshold is the probability a row needs to pass. Higher means fewer rows, and fewer borderline ones. 0.8 is a good start: on the 1000 demo reviews, Jev's answers at 0.8 matched the reviews' own mood labels most often (see [Results](#results)). Lower it if you'd rather see a few extra rows than miss one.
 
+To see what each threshold would keep on your own data, turn on the threshold tuner:
+
+```php
+VibeFilter::make()
+    ->textColumns(['body'])
+    ->thresholdTuner(),                 // or ->thresholdTuner([0.5, 0.7, 0.9])
+```
+
+Once a statement has run, the filter panel shows a few thresholds, each with how many rows it keeps. Pick one and the table follows at once: the scores are already there, so it asks the model nothing. It's off by default and meant for developers; in an app your users work in every day, leave it off once you've chosen a threshold.
+
 ### Large tables: the "Run anyway" limit
 
 Scoring costs money and time, so the filter doesn't send thousands of new rows on its own. When more rows than `maxUnscoredRows` have no cached score yet, the table stays unfiltered and the user sees how many rows are waiting, with two ways forward: narrow the table down with other filters or a search, or click **Run anyway**.
@@ -202,6 +212,17 @@ Each score is stored against three things: a hash of the row's text, the stateme
 - Rows are matched by content, not by ID. Edit a row and it gets a fresh score; two rows with the same text are scored once.
 - Statements are compared after light normalisation (case, extra spaces), so "The customer is angry." and "the customer is  angry." share a cache.
 - Switching the model or the service starts a new cache instead of mixing results.
+
+The cache keeps every statement anyone has run. To delete the ones nobody has run for a while, with their scores, schedule the prune command:
+
+```php
+// routes/console.php
+use Illuminate\Support\Facades\Schedule;
+
+Schedule::command('vibefilter:prune --days=90')->daily();
+```
+
+`--dry-run` shows what it would delete. A deleted statement isn't lost: running it again simply scores it again.
 
 ## About the demo data
 
