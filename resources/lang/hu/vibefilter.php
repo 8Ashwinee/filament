@@ -19,7 +19,7 @@ return [
     'tuner' => [
         'label' => 'Küszöb',
         'help' => 'Ennyi sor marad az egyes küszöböknél. Válassz egyet, hogy lásd őket.',
-        'option' => ':threshold · :count',
+        'rows' => ':count sor|:count sor',
     ],
 
     'column' => [

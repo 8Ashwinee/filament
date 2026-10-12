@@ -7,11 +7,14 @@ use Filament\Actions\Action;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\ToggleButtons;
 use Filament\Notifications\Notification;
+use Filament\Support\Enums\Size;
+use Filament\Support\Livewire\Partials\PartialsComponentHook;
 use Filament\Tables\Filters\BaseFilter;
 use Filament\Tables\Filters\Indicator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\View;
+use Illuminate\Support\HtmlString;
 use Illuminate\Support\Js;
 use Livewire\Component;
 use LogicException;
@@ -79,8 +82,11 @@ class VibeFilter extends BaseFilter
                 ->label(__('vibefilter::vibefilter.tuner.label'))
                 ->helperText(__('vibefilter::vibefilter.tuner.help'))
                 ->options(fn (): array => $this->getTunerOptions())
+                // Until one is picked, the configured threshold shows as picked.
+                ->default(fn (): string => number_format($this->getThreshold(), 2, '.', ''))
                 ->inline()
                 ->grouped()
+                ->size(Size::Small)
                 ->live()
                 ->afterStateUpdated(fn (mixed $state) => $this->applyTunedThreshold($state))
                 ->visible(fn (): bool => $this->hasThresholdTuner() && filled($this->getState()['statement'] ?? null)),
@@ -192,7 +198,9 @@ class VibeFilter extends BaseFilter
     }
 
     /**
-     * @return array<string, string>
+     * Each step as a button: the threshold, and under it how many rows it keeps.
+     *
+     * @return array<string, HtmlString>
      */
     protected function getTunerOptions(): array
     {
@@ -200,14 +208,19 @@ class VibeFilter extends BaseFilter
         $options = [];
 
         foreach ($this->getThresholdSteps() as $step) {
-            $label = Numbers::format($step, 2);
+            $rows = '';
 
             if ($scores !== null) {
                 $count = count(array_filter($scores, fn (float $probability) => $probability >= $step));
-                $label = __('vibefilter::vibefilter.tuner.option', ['threshold' => $label, 'count' => Numbers::format($count)]);
+                $rows = '<span style="font-size: 0.75em; font-weight: 400; opacity: 0.8; white-space: nowrap;">'
+                    . e(trans_choice('vibefilter::vibefilter.tuner.rows', $count, ['count' => Numbers::format($count)]))
+                    . '</span>';
             }
 
-            $options[number_format($step, 2, '.', '')] = $label;
+            $options[number_format($step, 2, '.', '')] = new HtmlString(
+                '<span style="display: flex; flex-direction: column; align-items: center; line-height: 1.25;">'
+                . '<span>' . e(Numbers::format($step, 2)) . '</span>' . $rows . '</span>'
+            );
         }
 
         return $options;
@@ -226,6 +239,10 @@ class VibeFilter extends BaseFilter
         if (method_exists($livewire, 'resetPage')) {
             $livewire->resetPage();
         }
+
+        // Filament re-renders only the filter panel when a deferred filter changes;
+        // this change is applied, so the table has to be drawn again too.
+        app(PartialsComponentHook::class)->forceRender($livewire);
     }
 
     /**

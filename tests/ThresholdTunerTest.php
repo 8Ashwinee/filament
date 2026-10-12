@@ -40,10 +40,7 @@ class ThresholdTunerTest extends TestCase
         Livewire::test(ListReviews::class, ['tuner' => true])
             ->filterTable('vibe', ['statement' => 'The customer is angry.'])
             ->assertSee('Rows kept at each threshold')
-            ->assertSee('0.60 · 4')
-            ->assertSee('0.70 · 3')
-            ->assertSee('0.80 · 2')
-            ->assertSee('0.90 · 1');
+            ->assertSeeInOrder(['0.60', '4 rows', '0.70', '3 rows', '0.80', '2 rows', '0.90', '1 row']);
     }
 
     public function test_picking_a_threshold_refilters_without_asking_the_model_again(): void
@@ -56,6 +53,18 @@ class ThresholdTunerTest extends TestCase
             ->assertSee('Vibe: The customer is angry. (≥ 0.60)');
 
         $this->assertCount(1, $this->driver->calls);
+    }
+
+    public function test_the_threshold_in_use_shows_as_picked(): void
+    {
+        // Typed into the panel and applied, the way a user does it.
+        Livewire::test(ListReviews::class, ['tuner' => true])
+            ->set('tableDeferredFilters.vibe.statement', 'The customer is angry.')
+            ->call('applyTableFilters')
+            ->assertSet('tableFilters.vibe.threshold', '0.80')
+            ->assertCountTableRecords(2)
+            ->assertSee('Vibe: The customer is angry.')
+            ->assertDontSee('(≥ 0.80)');
     }
 
     public function test_a_threshold_outside_the_steps_is_ignored(): void

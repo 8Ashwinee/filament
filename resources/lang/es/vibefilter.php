@@ -18,7 +18,7 @@ return [
     'tuner' => [
         'label' => 'Umbral',
         'help' => 'Filas que quedan con cada umbral. Elige uno para verlas.',
-        'option' => ':threshold · :count',
+        'rows' => ':count fila|:count filas',
     ],
 
     'column' => [

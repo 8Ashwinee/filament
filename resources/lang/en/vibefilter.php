@@ -18,7 +18,7 @@ return [
     'tuner' => [
         'label' => 'Threshold',
         'help' => 'Rows kept at each threshold. Pick one to see them.',
-        'option' => ':threshold · :count',
+        'rows' => ':count row|:count rows',
     ],
 
     'column' => [
