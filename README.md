@@ -157,7 +157,7 @@ Only rows *without* a cached score count toward the limit. A statement that has 
 
 ### Live progress
 
-While a run is going, a progress bar under the table toolbar shows the requests as they come back. When it's done, a notification sums it up: rows matched, rows scored, time, and with OpenRouter, the cost.
+While a run is going, a progress bar under the table toolbar shows the requests as they come back. When it's done, a notification sums it up: rows matched, rows scored and time. If you use the OpenRouter driver, it also shows what the run cost.
 
 ![The progress bar during a run](https://raw.githubusercontent.com/vibefilter/filament/main/art/progress.png)
 
