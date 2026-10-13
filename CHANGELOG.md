@@ -2,7 +2,7 @@
 
 All notable changes to `vibefilter/filament` will be documented in this file.
 
-## 0.3.0 - unreleased
+## 0.3.0 - 2026-10-13
 
 **Upgrading:** publish and run the new migration, which adds a `last_used_at` column to `vibefilter_questions`:
 
