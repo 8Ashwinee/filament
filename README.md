@@ -226,6 +226,8 @@ Schedule::command('vibefilter:prune --days=90')->daily();
 
 The screenshots and the results below come from a demo app with 1000 made-up customer reviews for a fictional shop. The reviews were written by five language models: Claude, ChatGPT, Gemini, Grok and Mistral. Each model also labelled its own reviews by topic and mood. The "Written by" column in the screenshots shows which model wrote which review. The customer names and dates are invented as well.
 
+The reviews are published as a dataset, [on Hugging Face](https://huggingface.co/datasets/vibefilter/customer-reviews-5llm) and [on GitHub](https://github.com/vibefilter/customer-reviews-5llm).
+
 ## Results
 
 We compared the mood labels (angry, neutral or satisfied) that each model gave its own reviews with what Jev said about "The customer is angry." and "The customer is satisfied.":
