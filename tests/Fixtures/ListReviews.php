@@ -24,6 +24,8 @@ class ListReviews extends Component implements HasActions, HasSchemas, HasTable
     use InteractsWithSchemas;
     use InteractsWithTable;
 
+    public bool $tuner = false;
+
     public function table(Table $table): Table
     {
         return $table
@@ -34,7 +36,7 @@ class ListReviews extends Component implements HasActions, HasSchemas, HasTable
                 VibeScoreColumn::make(),
             ])
             ->filters([
-                VibeFilter::make()->textColumns(['body']),
+                VibeFilter::make()->textColumns(['body'])->thresholdTuner($this->tuner),
                 SelectFilter::make('source')->options([
                     'claude' => 'Claude',
                     'grok' => 'Grok',

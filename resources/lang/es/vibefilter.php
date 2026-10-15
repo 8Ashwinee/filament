@@ -12,6 +12,13 @@ return [
         'statement' => 'Mostrar filas donde…',
         'placeholder' => 'El cliente está enojado',
         'indicator' => 'Vibe: :statement',
+        'indicator_threshold' => 'Vibe: :statement (≥ :threshold)',
+    ],
+
+    'tuner' => [
+        'label' => 'Umbral',
+        'help' => 'Filas que quedan con cada umbral. Elige uno para verlas.',
+        'rows' => ':count fila|:count filas',
     ],
 
     'column' => [

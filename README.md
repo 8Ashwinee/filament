@@ -43,7 +43,7 @@ Earlier Filament 5 releases will probably work too, but the test suite can't run
 composer require vibefilter/filament
 ```
 
-Publish and run the migration (it creates two tables for the score cache):
+Publish and run the migrations (they create two tables for the score cache):
 
 ```bash
 php artisan vendor:publish --tag="vibefilter-migrations"
@@ -137,6 +137,16 @@ $table->filtersApplyAction(
 
 The threshold is the probability a row needs to pass. Higher means fewer rows, and fewer borderline ones. 0.8 is a good start: on the 1000 demo reviews, Jev's answers at 0.8 matched the reviews' own mood labels most often (see [Results](#results)). Lower it if you'd rather see a few extra rows than miss one.
 
+To see what each threshold would keep on your own data, turn on the threshold tuner:
+
+```php
+VibeFilter::make()
+    ->textColumns(['body'])
+    ->thresholdTuner(),                 // or ->thresholdTuner([0.5, 0.7, 0.9])
+```
+
+Once a statement has run, the filter panel shows a few thresholds, each with how many rows it keeps. Pick one and the table follows at once: the scores are already there, so it asks the model nothing. It's off by default and meant for developers; in an app your users work in every day, leave it off once you've chosen a threshold.
+
 ### Large tables: the "Run anyway" limit
 
 Scoring costs money and time, so the filter doesn't send thousands of new rows on its own. When more rows than `maxUnscoredRows` have no cached score yet, the table stays unfiltered and the user sees how many rows are waiting, with two ways forward: narrow the table down with other filters or a search, or click **Run anyway**.
@@ -147,13 +157,11 @@ Only rows *without* a cached score count toward the limit. A statement that has 
 
 ### Live progress
 
-While a run is going, a progress bar under the table toolbar shows the requests as they come back, and any retries. When it's done, a notification sums up the run: how many rows matched, how many were scored and in how many requests, how many came from the cache, and how long it took. With the OpenRouter driver, the bar and the summary also show what the run cost, as OpenRouter reports it for each request.
+While a run is going, a progress bar under the table toolbar shows the requests as they come back. When it's done, a notification sums it up: rows matched, rows scored and time. If you use the OpenRouter driver, it also shows what the run cost.
 
 ![The progress bar during a run](https://raw.githubusercontent.com/vibefilter/filament/main/art/progress.png)
 
-During the run the table still shows the unfiltered rows; the matches replace them when the last request is back.
-
-The bar is streamed with Livewire's streaming responses. If your app sits behind Nginx, Livewire already sends the `X-Accel-Buffering: no` header that turns buffering off for these responses. If another proxy buffers them, the filter still works, but the bar only shows up at the end.
+The bar uses Livewire's streaming. Behind a proxy that buffers responses it only shows up at the end; the filter works either way.
 
 ### When the API has a bad moment
 
@@ -203,9 +211,22 @@ Each score is stored against three things: a hash of the row's text, the stateme
 - Statements are compared after light normalisation (case, extra spaces), so "The customer is angry." and "the customer is  angry." share a cache.
 - Switching the model or the service starts a new cache instead of mixing results.
 
+The cache keeps every statement anyone has run. To delete the ones nobody has run for a while, with their scores, schedule the prune command:
+
+```php
+// routes/console.php
+use Illuminate\Support\Facades\Schedule;
+
+Schedule::command('vibefilter:prune --days=90')->daily();
+```
+
+`--dry-run` shows what it would delete. A deleted statement isn't lost: running it again simply scores it again.
+
 ## About the demo data
 
 The screenshots and the results below come from a demo app with 1000 made-up customer reviews for a fictional shop. The reviews were written by five language models: Claude, ChatGPT, Gemini, Grok and Mistral. Each model also labelled its own reviews by topic and mood. The "Written by" column in the screenshots shows which model wrote which review. The customer names and dates are invented as well.
+
+The reviews are published as a dataset, [on Hugging Face](https://huggingface.co/datasets/vibefilter/customer-reviews-5llm) and [on GitHub](https://github.com/vibefilter/customer-reviews-5llm).
 
 ## Results
 
@@ -280,6 +301,13 @@ Please report security issues privately. See [our security policy](https://githu
 - [All contributors](https://github.com/vibefilter/filament/contributors)
 
 Scoring by [TypeSafe Jev](https://typesafe.ai).
+
+## Mentioned in
+
+- [Povilas Korop on X](https://x.com/PovilasKorop/status/2108278841126818222)
+- [awesome-jev](https://github.com/yibie/awesome-jev#classification--routing), Classification & Routing
+- [Laravel News Links on X](https://x.com/LaravelLinks/status/2109244689463275606)
+- [Filament plugin directory](https://filamentphp.com/plugins/andras-horvath-vibefilter)
 
 ## License
 

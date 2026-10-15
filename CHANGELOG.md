@@ -2,9 +2,20 @@
 
 All notable changes to `vibefilter/filament` will be documented in this file.
 
-## 0.2.1 - 2026-10-10
+## 0.3.0 - 2026-10-13
 
-- The OpenRouter driver sends OpenRouter's app attribution headers (`HTTP-Referer`, `X-OpenRouter-Title`), so usage is credited to Vibefilter. They can be changed, set to hidden, or switched off in the config.
+**Upgrading:** publish and run the new migration, which adds a `last_used_at` column to `vibefilter_questions`:
+
+```bash
+php artisan vendor:publish --tag="vibefilter-migrations"
+php artisan migrate
+```
+
+Until it runs, filtering works as before; only `vibefilter:prune` needs it.
+
+- `vibefilter:prune` deletes the statements nobody has run for a while (90 days by default), with their cached scores. `--dry-run` shows what it would delete.
+- Optional threshold tuner, `->thresholdTuner()`: the filter panel shows how many rows each threshold keeps, and picking one re-filters the table without asking the model again.
+- The OpenRouter driver sends OpenRouter's app attribution headers (`HTTP-Referer`, `X-OpenRouter-Title`), so usage is credited to Vibefilter. They can be changed, set to hidden, or switched off in the config. If you published the config before this version, add the `attribution` block from the package's config to keep sending them.
 - The package description matches the repository's.
 
 ## 0.2.0 - 2026-10-02

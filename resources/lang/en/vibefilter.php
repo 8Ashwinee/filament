@@ -12,6 +12,13 @@ return [
         'statement' => 'Show rows where…',
         'placeholder' => 'The customer is angry',
         'indicator' => 'Vibe: :statement',
+        'indicator_threshold' => 'Vibe: :statement (≥ :threshold)',
+    ],
+
+    'tuner' => [
+        'label' => 'Threshold',
+        'help' => 'Rows kept at each threshold. Pick one to see them.',
+        'rows' => ':count row|:count rows',
     ],
 
     'column' => [
